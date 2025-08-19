@@ -33,8 +33,8 @@ jobs:
             device-tree-compiler libssl-dev git \
             gcc-aarch64-linux-gnu pkg-config
 
-      - name: Clone TF-A (OpenWrt master with MT7981)
-        run: git clone --depth=1 https://github.com/openwrt/trusted-firmware-a.git -b master tf-a
+      - name: Clone TF-A (OpenWrt official, master)
+        run: git clone --depth=1 https://git.openwrt.org/project/trusted-firmware-a.git tf-a
 
       - name: Build TF-A (BL31)
         run: |
@@ -43,8 +43,8 @@ jobs:
           make -j"$(nproc)" fiptool
           cd ..
 
-      - name: Clone U-Boot (OpenWrt master)
-        run: git clone --depth=1 https://github.com/openwrt/u-boot.git -b master u-boot
+      - name: Clone U-Boot (OpenWrt official, master)
+        run: git clone --depth=1 https://git.openwrt.org/project/u-boot.git u-boot
 
       - name: Configure U-Boot
         run: |
