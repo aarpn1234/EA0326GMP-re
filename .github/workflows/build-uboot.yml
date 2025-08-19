@@ -15,7 +15,7 @@ on:
         default: 'false'
 
 permissions:
-  contents: write  # 允许创建/更新 Release
+  contents: write
 
 jobs:
   build:
@@ -33,8 +33,9 @@ jobs:
             device-tree-compiler libssl-dev git \
             gcc-aarch64-linux-gnu pkg-config
 
-      - name: Clone TF-A
-        run: git clone --depth=1 https://git.trustedfirmware.org/TF-A/trusted-firmware-a.git tf-a
+      - name: Clone TF-A (OpenWrt 24.10 branch with MT7981)
+        run: |
+          git clone --depth=1 https://github.com/openwrt/trusted-firmware-a.git -b openwrt-24.10 tf-a
 
       - name: Build TF-A (BL31)
         run: |
@@ -43,8 +44,8 @@ jobs:
           make -j"$(nproc)" fiptool
           cd ..
 
-      - name: Clone U-Boot
-        run: git clone --depth=1 https://source.denx.de/u-boot/u-boot.git u-boot
+      - name: Clone U-Boot (OpenWrt 24.10 branch)
+        run: git clone --depth=1 https://github.com/openwrt/u-boot.git -b openwrt-24.10 u-boot
 
       - name: Configure U-Boot
         run: |
@@ -97,18 +98,12 @@ jobs:
           sha256sum u-boot/u-boot.bin > u-boot.bin.sha256
 
       - name: Collect metadata and release notes
-        id: meta
         run: |
           TF_A_SHA=$(git -C tf-a rev-parse --short HEAD)
           UBOOT_SHA=$(git -C u-boot rev-parse --short HEAD)
           FIP_BYTES=$(stat -c%s fip.bin)
           UBOOT_BYTES=$(stat -c%s u-boot/u-boot.bin)
-          echo "TF_A_SHA=$TF_A_SHA" >> $GITHUB_ENV
-          echo "UBOOT_SHA=$UBOOT_SHA" >> $GITHUB_ENV
-          echo "FIP_BYTES=$FIP_BYTES" >> $GITHUB_ENV
-          echo "UBOOT_BYTES=$UBOOT_BYTES" >> $GITHUB_ENV
 
-          # 生成 Tag 和 Release 名称
           if [ -n "${{ github.event.inputs.tag }}" ]; then
             TAG="${{ github.event.inputs.tag }}"
           else
@@ -143,7 +138,6 @@ jobs:
             echo "sync && reboot"
             echo '```'
           } > RELEASE_NOTES.md
-          cat RELEASE_NOTES.md
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
