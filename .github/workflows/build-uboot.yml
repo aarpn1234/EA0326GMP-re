@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag (可选，不填则自动生成，如 v20250819-run12)'
+        description: 'Release tag（可选，不填则自动生成）'
         required: false
       name:
         description: 'Release 标题（可选，不填则自动生成）'
@@ -33,9 +33,8 @@ jobs:
             device-tree-compiler libssl-dev git \
             gcc-aarch64-linux-gnu pkg-config
 
-      - name: Clone TF-A (OpenWrt 24.10 branch with MT7981)
-        run: |
-          git clone --depth=1 https://github.com/openwrt/trusted-firmware-a.git -b openwrt-24.10 tf-a
+      - name: Clone TF-A (OpenWrt master with MT7981)
+        run: git clone --depth=1 https://github.com/openwrt/trusted-firmware-a.git -b master tf-a
 
       - name: Build TF-A (BL31)
         run: |
@@ -44,8 +43,8 @@ jobs:
           make -j"$(nproc)" fiptool
           cd ..
 
-      - name: Clone U-Boot (OpenWrt 24.10 branch)
-        run: git clone --depth=1 https://github.com/openwrt/u-boot.git -b openwrt-24.10 u-boot
+      - name: Clone U-Boot (OpenWrt master)
+        run: git clone --depth=1 https://github.com/openwrt/u-boot.git -b master u-boot
 
       - name: Configure U-Boot
         run: |
