@@ -1,0 +1,72 @@
+name: OpenWrt EA0326GMP (mt7981) - 24.10 r28789-92d4f59709
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang flex bison g++ gawk \
+            gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev \
+            python3 python3-distutils rsync unzip zlib1g-dev file wget time \
+            ccache swig libelf-dev ecj fastjar subversion pkg-config xsltproc
+
+      - name: Clone OpenWrt (lock to 92d4f59709)
+        run: |
+          git clone https://git.openwrt.org/openwrt/openwrt.git
+          cd openwrt
+          git checkout 92d4f59709
+
+      - name: Copy seed.config & feeds
+        run: |
+          cd openwrt
+          [ -f ../seed.config ] && cp ../seed.config .config
+          make defconfig
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          make defconfig   # 再次确保 feed 包被选中
+          echo "==== Final .config (target lines) ===="
+          grep '^CONFIG_TARGET_' .config || true
+
+      - name: Unlock MTD (remove read-only on BL2/FIP)
+        run: |
+          set -euxo pipefail
+          cd openwrt
+          DTS="target/linux/mediatek/dts/mt7981b-nokia-ea0326gmp.dts"
+          [ -f "$DTS" ] || { echo "DTS not found"; exit 1; }
+          cp "$DTS" "$DTS.bak"
+          # 删除 BL2 与 FIP 分区内部的 read-only 行
+          sed -i '/label = "BL2"/,/};/  {/read-only;/d}'  "$DTS"
+          sed -i '/label = "FIP"/,/};/  {/read-only;/d}'  "$DTS"
+          echo "==== DTS diff ===="
+          diff -u "$DTS.bak" "$DTS" || true
+
+      - name: Download & compile
+        run: |
+          cd openwrt
+          make download -j$(nproc)
+          make -j$(nproc) || make -j1 V=s
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p out
+          cd openwrt/bin/targets/mediatek/filogic
+          find . -type f  $ -name "*.bin" -o -name "*.manifest" $ \
+            -exec cp {} ../../../../out/ \;
+          echo "==== Images produced ===="
+          ls -lh ../../../../out/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ea0326gmp-mt7981-images
+          path: out/
