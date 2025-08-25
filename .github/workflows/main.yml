@@ -41,15 +41,6 @@ jobs:
           ./scripts/feeds install -a
           make defconfig
 
-      - name: Unlock MTD (remove read-only on BL2/FIP)
-        run: |
-          cd openwrt
-          DTS="target/linux/mediatek/dts/mt7981b-nokia-ea0326gmp.dts"
-          cp "$DTS" "$DTS.bak"
-          sed -i '/label = "BL2"/,/};/ {/read-only;/d}' "$DTS"
-          sed -i '/label = "FIP"/,/};/ {/read-only;/d}' "$DTS"
-          diff -u "$DTS.bak" "$DTS" || true
-
       - name: Download & compile
         run: |
           cd openwrt
