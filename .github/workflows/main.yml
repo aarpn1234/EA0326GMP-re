@@ -24,9 +24,7 @@ jobs:
 
       - name: Clone OpenWrt @ 24.10.2 r28739-d9340319c6
         run: |
-          git clone https://git.openwrt.org/openwrt/openwrt.git openwrt
-          cd openwrt
-          git checkout d9340319c6
+          git clone -b v24.10.2 https://github.com/openwrt/openwrt.git
 
       - name: Add Custom Packages
         run: |
