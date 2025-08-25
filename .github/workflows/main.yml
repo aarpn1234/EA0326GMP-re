@@ -71,9 +71,8 @@ jobs:
         run: |
           cd openwrt
           tag="ea0326gmp-24.10.2-$(date +'%Y%m%d')-$(git rev-parse --short=8 HEAD)"
-          gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
           gh release create "$tag" \
-            --repo="$GITHUB_REPOSITORY" \
+            --repo="${{ github.repository }}" \
             --title="OpenWrt EA0326GMP Build (${tag#*-})" \
             --notes="Auto-built EA0326GMP firmware with BL2/FIP unlocked and custom packages: Argon theme, Mentohust, sing-box stack." \
             --draft=false \
