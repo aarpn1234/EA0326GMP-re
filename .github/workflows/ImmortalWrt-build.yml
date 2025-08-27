@@ -31,12 +31,14 @@ jobs:
 
       - name: Add Custom Packages
         run: |
-          cd immortalwrt/package
+          cd openwrt/package
           git clone https://github.com/jerrykuku/luci-theme-argon.git
+          git clone https://github.com/jerrykuku/luci-app-argon-config.git
+          git clone https://github.com/sbwml/luci-app-mentohust mentohust
 
       - name: Load seed.config & update feeds
         run: |
-          cd immortalwrt
+          cd openwrt
           cp ../seed.config .config
           ./scripts/feeds update -a
           ./scripts/feeds install -a
@@ -44,27 +46,38 @@ jobs:
 
       - name: Download & compile
         run: |
-          cd immortalwrt
+          cd openwrt
           make download -j$(nproc)
           make -j$(nproc) || make -j1 V=s
 
-      - name: Pack filogic directory
+      - name: Pack multiple image formats
         run: |
-          cd immortalwrt/bin/targets/mediatek
+          cd openwrt/bin/targets/mediatek/armvirt
           tag="ea0326gmp-$(date +'%Y%m%d')"
-          tar -czf ${tag}-filogic.tar.gz filogic/
-          mv ${tag}-filogic.tar.gz ../../../../
+          # 打包 squashfs
+          [ -d squashfs-root ] && tar -czf ${tag}-squashfs.tar.gz squashfs-root/
+          # 打包 ext4
+          [ -d ext4-root ] && tar -czf ${tag}-ext4.tar.gz ext4-root/
+          # 打包 filogic 文件夹
+          [ -d filogic ] && tar -czf ${tag}-filogic.tar.gz filogic/
+          # 收集 bin / img
+          mv *.bin*.gz ../../../../
+          mv *.img ../../../../
 
       - name: Create Release & upload
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cd immortalwrt
+          cd openwrt
           tag="ea0326gmp-24.10.2-$(date +'%Y%m%d')-$(git rev-parse --short=8 HEAD)"
           gh release create "$tag" \
             --repo="${{ github.repository }}" \
-            --title="ImmortalWrt EA0326GMP Build (${tag#*-})" \
-            --notes="Auto-built EA0326GMP firmware (ImmortalWrt v24.10.2) with BL2/FIP unlocked and custom package: Argon theme." \
+            --title="OpenWrt EA0326GMP Build (${tag#*-})" \
+            --notes="Auto-built EA0326GMP firmware with BL2/FIP unlocked, kmod-mtd-rw, and multiple image formats." \
             --draft=false \
             --prerelease=false \
-            ../ea0326gmp-$(date +'%Y%m%d')-filogic.tar.gz
+            ../ea0326gmp-*-filogic.tar.gz \
+            ../ea0326gmp-*-squashfs.tar.gz \
+            ../ea0326gmp-*-ext4.tar.gz \
+            ../*.bin* \
+            ../*.img
