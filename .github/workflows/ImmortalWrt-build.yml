@@ -1,0 +1,70 @@
+name: OpenWrt EA0326GMP Build (ImmortalWrt v24.10.2)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential clang flex bison g++ gawk gcc-multilib g++-multilib \
+            gettext git libncurses5-dev libssl-dev python3 python3-distutils \
+            rsync unzip zlib1g-dev file wget time ccache swig libelf-dev \
+            ecj fastjar subversion pkg-config xsltproc gh
+
+      - name: Clone ImmortalWrt v24.10.2
+        run: |
+          git clone https://github.com/immortalwrt/immortalwrt.git
+          cd immortalwrt
+          git fetch --tags
+          git checkout tags/v24.10.2 -b v24.10.2
+
+      - name: Add Custom Packages
+        run: |
+          cd immortalwrt/package
+          git clone https://github.com/jerrykuku/luci-theme-argon.git
+
+      - name: Load seed.config & update feeds
+        run: |
+          cd immortalwrt
+          cp ../seed.config .config
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          make defconfig
+
+      - name: Download & compile
+        run: |
+          cd immortalwrt
+          make download -j$(nproc)
+          make -j$(nproc) || make -j1 V=s
+
+      - name: Pack filogic directory
+        run: |
+          cd immortalwrt/bin/targets/mediatek
+          tag="ea0326gmp-$(date +'%Y%m%d')"
+          tar -czf ${tag}-filogic.tar.gz filogic/
+          mv ${tag}-filogic.tar.gz ../../../../
+
+      - name: Create Release & upload
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd immortalwrt
+          tag="ea0326gmp-24.10.2-$(date +'%Y%m%d')-$(git rev-parse --short=8 HEAD)"
+          gh release create "$tag" \
+            --repo="${{ github.repository }}" \
+            --title="ImmortalWrt EA0326GMP Build (${tag#*-})" \
+            --notes="Auto-built EA0326GMP firmware (ImmortalWrt v24.10.2) with BL2/FIP unlocked and custom package: Argon theme." \
+            --draft=false \
+            --prerelease=false \
+            ../ea0326gmp-$(date +'%Y%m%d')-filogic.tar.gz
